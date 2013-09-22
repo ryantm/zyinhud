@@ -349,7 +349,7 @@ public class GuiZyinHUDOptions extends GuiScreen
     	Y += buttonHeight + buttonSpacing;
     	buttonList.add(new GuiButton(915, buttonX_column2, Y, buttonWidth_half, buttonHeight, GetButtonLabel_Boolean("animalinfo.options.showbreedingchicken", AnimalInfo.ShowBreedingTimerForChickens)));
 		Y += buttonHeight + buttonSpacing;
-    	buttonList.add(new GuiButton(916, buttonX_column2, Y, buttonWidth_half, buttonHeight, GetButtonLabel_Boolean("animalinfo.options.showhorseawesomeness", AnimalInfo.ShowHorseAwesomeness)));
+    	buttonList.add(new GuiButton(932467, buttonX_column2, Y, buttonWidth_half, buttonHeight, GetButtonLabel_Boolean("animalinfo.options.showhorseawesomeness", AnimalInfo.ShowHorseAwesomeness)));
     	
     }
     private void DrawPotionTimerButtons()
@@ -846,10 +846,10 @@ public class GuiZyinHUDOptions extends GuiScreen
             	AnimalInfo.ToggleShowBreedingTimers();
             	button.displayString = GetButtonLabel_Boolean("animalinfo.options.showbreedingtimers", AnimalInfo.ShowBreedingTimers);
             }
-            else if (button.id == 916)	//Toggle showing horse awesomeness
+            else if (button.id == 932467)	//Toggle showing horse awesomeness
             {
             	AnimalInfo.ToggleShowHorseAwesomeness();
-            	button.displayString = GetButtonLabel_Boolean("animalinfo.showhorseawesomeness", AnimalInfo.ShowHorseAwesomeness);
+            	button.displayString = GetButtonLabel_Boolean("animalinfo.options.showhorseawesomeness", AnimalInfo.ShowHorseAwesomeness);
             }
             
             
