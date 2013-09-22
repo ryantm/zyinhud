@@ -165,6 +165,8 @@ public class SafeOverlay
     @ForgeSubscribe
     public void onPlayerInteractEvent(PlayerInteractEvent event)
     {
+    	//THIS EVENT IS NOT FIRED ON SMP SERVERS
+    	
         if (event.action != Action.RIGHT_CLICK_BLOCK)
         {
             return;    //can only place blocks by right clicking
@@ -174,8 +176,6 @@ public class SafeOverlay
         int y = event.y;
         int z = event.z;
         int blockClickedId = mc.theWorld.getBlockId(x, y, z);
-        //System.out.println("block clicked at ("+x+","+y+","+z+")");
-        //System.out.println("block clicked ID:"+blockClickedId);
         int blockFace = event.face;	// Bottom = 0, Top = 1, Sides = 2-5
 
         if (blockFace == 0)
@@ -204,8 +204,6 @@ public class SafeOverlay
         }
 
         int blockPlacedId = mc.theWorld.getBlockId(x, y, z);
-        //System.out.println("block placed at ("+x+","+y+","+z+")");
-        //System.out.println("block placed ID:"+blockPlacedId);
 
         if (blockPlacedId != 0)	//if it's not an Air block
         {
@@ -334,67 +332,6 @@ public class SafeOverlay
     	return false;
     }
 
-    /**
-     * Renders all unsafe areas around the player.
-     * It will only recalculate the unsafe areas once every [updateFrequency] milliseconds
-     * @param partialTickTime
-     */
-    //SINGLE THREADED VERSION
-    @Deprecated
-    protected void RenderAllUnsafePositions(float partialTickTime)
-    {
-        if (Mode == 0)	//0 = off, 1 = on
-        {
-            return;
-        }
-
-        player = mc.thePlayer;
-
-        if (!displayInNether && player.dimension == -1)	//turn off in the nether, mobs can spawn no matter what
-        {
-            return;
-        }
-
-        long frameTime = System.currentTimeMillis();
-        double x = player.lastTickPosX + (player.posX - player.lastTickPosX) * partialTickTime;
-        double y = player.lastTickPosY + (player.posY - player.lastTickPosY) * partialTickTime;
-        double z = player.lastTickPosZ + (player.posZ - player.lastTickPosZ) * partialTickTime;
-        playerPosition = new Position((int) Math.floor(x), (int) Math.floor(y), (int) Math.floor(z));
-
-        if (unsafePositionCache.size() == 0
-                || !playerPosition.equals(cachePosition)
-                || frameTime - lastGenerate > updateFrequency)
-        {
-            CalculateUnsafePositions();
-        }
-
-        GL11.glTranslated(-x, -y, -z);		//go from cartesian x,y,z coordinates to in-world x,y,z coordinates
-        GL11.glDisable(GL11.GL_TEXTURE_2D);	//fixes color rendering bug (we aren't rendering textures)
-        //allows for color transparency
-        GL11.glEnable(GL11.GL_BLEND);
-        GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
-
-        if (renderUnsafePositionsThroughWalls)
-        {
-            GL11.glClear(GL11.GL_DEPTH_BUFFER_BIT);    //allows this unsafe position to be rendered through other blocks
-        }
-        else
-        {
-            GL11.glEnable(GL11.GL_DEPTH_TEST);
-        }
-
-        GL11.glBegin(GL11.GL_LINES);	//begin drawing lines defined by 2 vertices
-
-        //render unsafe areas
-        for (Position position : unsafePositionCache)
-        {
-            RenderUnsafeMarker(position);
-        }
-
-        GL11.glEnd();
-        GL11.glEnable(GL11.GL_TEXTURE_2D);
-        GL11.glBlendFunc(GL11.GL_ONE, GL11.GL_ZERO);	//puts blending back to normal, fixes bad HD texture rendering
-    }
 
     /**
      * Renders all unsafe areas around the player.
@@ -415,20 +352,22 @@ public class SafeOverlay
             return;
         }
 
-        long frameTime = System.currentTimeMillis();
         double x = player.lastTickPosX + (player.posX - player.lastTickPosX) * partialTickTime;
         double y = player.lastTickPosY + (player.posY - player.lastTickPosY) * partialTickTime;
         double z = player.lastTickPosZ + (player.posZ - player.lastTickPosZ) * partialTickTime;
+        
         playerPosition = new Position((int) Math.floor(x), (int) Math.floor(y), (int) Math.floor(z));
 
-        if (recalculateUnsafePositionsFlag || frameTime - lastGenerate > updateFrequency)
+        if (recalculateUnsafePositionsFlag || System.currentTimeMillis() - lastGenerate > updateFrequency)
         {
             CalculateUnsafePositionsMultithreaded();
         }
 
+        GL11.glPushMatrix();
         GL11.glTranslated(-x, -y, -z);		//go from cartesian x,y,z coordinates to in-world x,y,z coordinates
         GL11.glDisable(GL11.GL_TEXTURE_2D);	//fixes color rendering bug (we aren't rendering textures)
-        //allows for color transparency
+        
+        //BLEND and ALPHA allow for color transparency
         GL11.glEnable(GL11.GL_BLEND);
         GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
 
@@ -455,16 +394,19 @@ public class SafeOverlay
                 e.printStackTrace();
             }
         }
+        
 
         //render unsafe areas
         for (Position position : unsafePositionCache)
         {
             RenderUnsafeMarker(position);
         }
+        
 
         GL11.glEnd();
         GL11.glEnable(GL11.GL_TEXTURE_2D);
         GL11.glBlendFunc(GL11.GL_ONE, GL11.GL_ZERO);	//puts blending back to normal, fixes bad HD texture rendering
+        GL11.glPopMatrix();
     }
 
     /**
@@ -478,17 +420,19 @@ public class SafeOverlay
         int blockAboveId = position.GetBlockId(0, 1, 0);
         Block block = Block.blocksList[blockId];
         Block blockAbove = Block.blocksList[blockAboveId];
+        
         //block is null when attempting to render on an Air block
         //we don't like null references so treat Air like an ordinary Stone block
         block = (block == null) ? Block.stone : block;
+        
         //get bounding box data for this block
         //don't bother for horizontal (X and Z) bounds because every hostile mob spawns on a 1.0 wide block
         //some blocks, like farmland, have a different vertical (Y) bound
-        double boundingBoxMinX = 0;
-        double boundingBoxMaxX = 1;
+        double boundingBoxMinX = 0.0;
+        double boundingBoxMaxX = 1.0;
         double boundingBoxMaxY = block.getBlockBoundsMaxY();	//almost always 1, but farmland is 0.9375
-        double boundingBoxMinZ = 0;
-        double boundingBoxMaxZ = 1;
+        double boundingBoxMinZ = 0.0;
+        double boundingBoxMaxZ = 1.0;
         float r, g, b, alpha;
         int lightLevelWithSky = position.GetLightLevelWithSky();
         int lightLevelWithoutSky = position.GetLightLevelWithoutSky();
@@ -521,9 +465,8 @@ public class SafeOverlay
 
         if (blockAbove != null)	//if block above is not an Air block
         {
-        	//Minecraft bug: the Y-bounds for stacked snow blocks changes based on the last on you looked at
-            if (blockAbove instanceof BlockSnow
-                    || blockAbove instanceof BlockRailBase
+        	
+            if (blockAbove instanceof BlockRailBase
                     || blockAbove instanceof BlockBasePressurePlate
                     || blockAbove instanceof BlockCarpet)
             {
@@ -531,14 +474,24 @@ public class SafeOverlay
                 //if so, then render the mark higher up to match its height
                 boundingBoxMaxY = 1 + blockAbove.getBlockBoundsMaxY();
             }
+            else if (blockAbove instanceof BlockSnow)
+            {
+            	//mobs only spawn on snow blocks that are stacked 1 high (when metadata = 0)
+            	
+            	//Minecraft bug: the Y-bounds for stacked snow blocks is bugged and changes based on the last one you looked at
+                int snowMetadata = mc.theWorld.getBlockMetadata(position.x, position.y+1, position.z);
+                if(snowMetadata == 0)
+                	boundingBoxMaxY = 1 + 0.125;
+            }
         }
+        
 
-        double minX = position.x + boundingBoxMinX + 0.02f;
-        double maxX = position.x + boundingBoxMaxX - 0.02f;
-        double maxY = position.y + boundingBoxMaxY + 0.02f;
-        double minZ = position.z + boundingBoxMinZ + 0.02f;
-        double maxZ = position.z + boundingBoxMaxZ - 0.02f;
-
+        double minX = position.x + boundingBoxMinX + 0.02;
+        double maxX = position.x + boundingBoxMaxX - 0.02;
+        double maxY = position.y + boundingBoxMaxY + 0.02;
+        double minZ = position.z + boundingBoxMinZ + 0.02;
+        double maxZ = position.z + boundingBoxMaxZ - 0.02;
+        
         //render the "X" mark
         //since we are using doubles it causes the marks to 'flicker' when very far from spawn (~5000 blocks)
         //if we use GL11.glVertex3i(int, int, int) it fixes the issue but then we can't render the marks
@@ -555,39 +508,6 @@ public class SafeOverlay
      * to the unsafePositionCache. The cache is used when the unsafe positions are
      * rendered (a.k.a. every frame). The cache is used to save CPU cycles from not
      * having to recalculate the unsafe locations every frame.
-     */
-    //SINGLE THREADED VERSION
-    @Deprecated
-    protected void CalculateUnsafePositions()
-    {
-        unsafePositionCache.clear();
-        Position pos = new Position();
-        boolean previous = false;
-
-        for (int x = -drawDistance; x < drawDistance; x++)
-            for (int z = -drawDistance; z < drawDistance; z++)
-                for (int y = -drawDistance; y < drawDistance; y++)
-                {
-                    pos.x = playerPosition.x + x;
-                    pos.y = playerPosition.y + y;
-                    pos.z = playerPosition.z + z;
-
-                    if (pos.CanMobsSpawnOnBlock(0, 0, 0) && pos.CanMobsSpawnInBlock(0, 1, 0)
-                            && pos.GetLightLevelWithoutSky() < 8)
-                    {
-                        unsafePositionCache.add(new Position(pos));
-                    }
-                }
-
-        cachePosition = playerPosition;
-        lastGenerate = System.currentTimeMillis();
-    }
-
-    /**
-     * Calculates which areas around the player are unsafe and adds these Positions
-     * to the unsafePositionCache. The cache is used when the unsafe positions are
-     * rendered (a.k.a. every frame). The cache is used to save CPU cycles from not
-     * having to recalculate the unsafe locations every frame.
      * <p>
      * This is a multithreaded method that makes a new thread to calculate unsafe
      * areas for each elevation (Y coordinate) around the player. This means that
@@ -597,25 +517,12 @@ public class SafeOverlay
     protected void CalculateUnsafePositionsMultithreaded()
     {
         unsafePositionCache.clear();
-        //List<Thread> threads = Collections.synchronizedList(new ArrayList<Thread>(drawDistance*2+1));
 
         for (int y = -drawDistance; y < drawDistance; y++)
         {
             safeCalculatorThreads.add(new SafeCalculatorThread(y));
         }
-
-        /*
-        for(Thread t : threads)
-        {
-        	try
-        	{
-        		t.join();
-        	}
-        	catch (InterruptedException e)
-        	{
-        		e.printStackTrace();
-        	}
-        }*/
+        
         recalculateUnsafePositionsFlag = false;
         cachePosition = playerPosition;
         lastGenerate = System.currentTimeMillis();

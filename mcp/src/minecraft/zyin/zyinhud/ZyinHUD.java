@@ -12,15 +12,16 @@ import org.lwjgl.input.Keyboard;
 import zyin.zyinhud.command.CommandFps;
 import zyin.zyinhud.command.CommandZyinHUDOptions;
 import zyin.zyinhud.gui.GuiZyinHUDOptions;
+import zyin.zyinhud.keyhandler.AnimalInfoKeyHandler;
 import zyin.zyinhud.keyhandler.DistanceMeasurerKeyHandler;
 import zyin.zyinhud.keyhandler.EatingAidKeyHandler;
 import zyin.zyinhud.keyhandler.EnderPearlAidKeyHandler;
 import zyin.zyinhud.keyhandler.GuiZyinHUDOptionsKeyHandler;
-import zyin.zyinhud.keyhandler.AnimalInfoKeyHandler;
 import zyin.zyinhud.keyhandler.PlayerLocatorKeyHandler;
 import zyin.zyinhud.keyhandler.PotionAidKeyHandler;
 import zyin.zyinhud.keyhandler.SafeOverlayKeyHandler;
 import zyin.zyinhud.keyhandler.WeaponSwapperKeyHandler;
+import zyin.zyinhud.mods.AnimalInfo;
 import zyin.zyinhud.mods.Clock;
 import zyin.zyinhud.mods.Compass;
 import zyin.zyinhud.mods.Coordinates;
@@ -29,7 +30,6 @@ import zyin.zyinhud.mods.DurabilityInfo;
 import zyin.zyinhud.mods.EatingAid;
 import zyin.zyinhud.mods.EnderPearlAid;
 import zyin.zyinhud.mods.Fps;
-import zyin.zyinhud.mods.AnimalInfo;
 import zyin.zyinhud.mods.InfoLine;
 import zyin.zyinhud.mods.PlayerLocator;
 import zyin.zyinhud.mods.PotionAid;
@@ -42,7 +42,6 @@ import zyin.zyinhud.tickhandler.RenderTickHandler;
 import zyin.zyinhud.util.Localization;
 import cpw.mods.fml.client.registry.KeyBindingRegistry;
 import cpw.mods.fml.common.Mod;
-import cpw.mods.fml.common.Mod.Instance;
 import cpw.mods.fml.common.SidedProxy;
 import cpw.mods.fml.common.event.FMLInitializationEvent;
 import cpw.mods.fml.common.event.FMLPostInitializationEvent;
@@ -53,7 +52,7 @@ import cpw.mods.fml.common.network.NetworkMod;
 import cpw.mods.fml.common.registry.TickRegistry;
 import cpw.mods.fml.relauncher.Side;
 
-@Mod(modid = "ZyinHUD", name = "Zyin's HUD", version = "0.11.6")
+@Mod(modid = "ZyinHUD", name = "Zyin's HUD", version = "1.0.0")
 @NetworkMod(clientSideRequired = true, serverSideRequired = false)
 public class ZyinHUD
 {
@@ -64,7 +63,7 @@ public class ZyinHUD
      */
     private static final String DefaultSupportedLanguages = "en_US"; //"en_US, zh_CN";
     
-    //this should match the text used in the en_US.properties file
+    //this should match the text used in the en_US.properties file because its used to grab data from the localization file
     public static final String CATEGORY_MISC = "misc";
     public static final String CATEGORY_INFOLINE = "infoline";
     public static final String CATEGORY_COORDINATES = "coordinates";
@@ -107,12 +106,10 @@ public class ZyinHUD
     protected static String DefaultPotionAidHotkey = "V";
     protected static String DefaultOptionsHotkey = "Z";	//Ctrl + Alt + Z
     
-    
-    //private static Minecraft mc = Minecraft.getMinecraft();
     public static Configuration config = null;
     
-    @Instance("ZyinHUD")
-    public static ZyinHUD instance;
+    //@Instance("ZyinHUD")
+    //public static ZyinHUD instance;
 
     @SidedProxy(clientSide = "zyin.zyinhud.ClientProxy", serverSide = "zyin.zyinhud.CommonProxy")
     public static CommonProxy proxy;
@@ -129,19 +126,16 @@ public class ZyinHUD
     {
         LoadConfigSettings(event.getSuggestedConfigurationFile());
         
-        Localization.loadLanguages("/lang/zyinhud/", GetSupportedLanguages());
+        Localization.LoadLanguages("/lang/zyinhud/", GetSupportedLanguages());
     }
 
     @Mod.EventHandler
     public void init(FMLInitializationEvent event)
     {
-        proxy.registerRenderers();
-        
         MinecraftForge.EVENT_BUS.register(RenderTickHandler.instance);	//needed for @ForgeSubscribe method subscriptions
 
         TickRegistry.registerTickHandler(new HUDTickHandler(), Side.CLIENT);
         TickRegistry.registerTickHandler(new GUITickHandler(), Side.CLIENT);
-        
         
     	LoadKeyHandlers();
     }
@@ -168,6 +162,11 @@ public class ZyinHUD
     }
 
     
+    
+    /**
+     * Gets a string array of supported languages
+     * @return e.x. ["en_US", "zh_CN"]
+     */
     private String[] GetSupportedLanguages()
     {
     	return SupportedLanguages.replace(" ","").split(",");
@@ -183,7 +182,7 @@ public class ZyinHUD
     }
     
     /**
-     * Saves every value that could be changed while in game back to the config file.
+     * Saves every value back to the config file.
      */
     public static void SaveConfigSettings()
     {
@@ -340,19 +339,19 @@ public class ZyinHUD
         else
         	p.set(DurabilityInfo.DurabilityUpdateFrequency);
         
-        p = config.get(CATEGORY_DURABILITYINFO, "DurabilityLocationHorizontal", 20);
+        p = config.get(CATEGORY_DURABILITYINFO, "DurabilityLocationHorizontal", 30);
         p.comment = "The horizontal position of the durability icons. 0 is left, 400 is far right.";
         if(loadSettings)
-        	DurabilityInfo.SetDurabalityHorizontalLocation(p.getInt());
+        	DurabilityInfo.SetHorizontalLocation(p.getInt());
         else
-        	p.set(DurabilityInfo.GetDurabalityHorizontalLocation());
+        	p.set(DurabilityInfo.GetHorizontalLocation());
         
         p = config.get(CATEGORY_DURABILITYINFO, "DurabilityLocationVertical", 20);
         p.comment = "The vertical position of the durability icons. 0 is top, 200 is very bottom.";
         if(loadSettings)
-        	DurabilityInfo.SetDurabalityVerticalLocation(p.getInt());
+        	DurabilityInfo.SetVerticalLocation(p.getInt());
         else
-        	p.set(DurabilityInfo.GetDurabalityVerticalLocation());
+        	p.set(DurabilityInfo.GetVerticalLocation());
         
         
         //CATEGORY_SAFEOVERLAY
@@ -406,6 +405,28 @@ public class ZyinHUD
         	PotionTimers.Enabled = p.getBoolean(true);
         else
         	p.set(PotionTimers.Enabled);
+
+        p = config.get(CATEGORY_POTIONTIMERS, "ShowPotionIcons", true);
+        p.comment = "Enable/Disable showing the status effect of potions next to the timers.";
+        if(loadSettings)
+        	PotionTimers.ShowPotionIcons = p.getBoolean(true);
+        else
+        	p.set(PotionTimers.ShowPotionIcons);
+        
+        p = config.get(CATEGORY_POTIONTIMERS, "PotionTimersLocationHorizontal", 1);
+        p.comment = "The horizontal position of the potion timers. 0 is left, 400 is far right.";
+        if(loadSettings)
+        	PotionTimers.SetHorizontalLocation(p.getInt());
+        else
+        	p.set(PotionTimers.GetHorizontalLocation());
+        
+        p = config.get(CATEGORY_POTIONTIMERS, "PotionTimersLocationVertical", 16);
+        p.comment = "The vertical position of the potion timers. 0 is top, 200 is very bottom.";
+        if(loadSettings)
+        	PotionTimers.SetVerticalLocation(p.getInt());
+        else
+        	p.set(PotionTimers.GetVerticalLocation());
+        
         
         
         //CATEGORY_PLAYERLOCATOR
@@ -430,10 +451,17 @@ public class ZyinHUD
         else
         	p.set(PlayerLocator.ShowDistanceToPlayers);
         
-        p = config.get(CATEGORY_PLAYERLOCATOR, "PlayerLocatorMinViewDistance", 10);
+        p = config.get(CATEGORY_PLAYERLOCATOR, "ShowPlayerHealth", false);
+        p.comment = "Show how much health players have by their name.";
+        if(loadSettings)
+        	PlayerLocator.ShowPlayerHealth = p.getBoolean(false);
+        else
+        	p.set(PlayerLocator.ShowPlayerHealth);
+        
+        p = config.get(CATEGORY_PLAYERLOCATOR, "PlayerLocatorMinViewDistance", 0);
         p.comment = "Stop showing player names when they are this close (distance measured in blocks).";
         if(loadSettings)
-        	PlayerLocator.viewDistanceCutoff = p.getInt(10);
+        	PlayerLocator.viewDistanceCutoff = p.getInt(0);
         else
         	p.set(PlayerLocator.viewDistanceCutoff);
         
@@ -453,10 +481,10 @@ public class ZyinHUD
         else
         	p.set(Keyboard.getKeyName(key_G[0].keyCode));
         
-        p = config.get(CATEGORY_EATINGAID, "EatGoldenFood", true);
+        p = config.get(CATEGORY_EATINGAID, "EatGoldenFood", false);
         p.comment = "Enable/Disable using golden apples and golden carrots as food.";
         if(loadSettings)
-        	EatingAid.EatGoldenFood = p.getBoolean(true);
+        	EatingAid.EatGoldenFood = p.getBoolean(false);
         else
         	p.set(EatingAid.EatGoldenFood);
         
@@ -524,6 +552,13 @@ public class ZyinHUD
         else
         	p.set(Keyboard.getKeyName(key_O[0].keyCode));
         
+        p = config.get(CATEGORY_ANIMALINFO, "ShowTextBackgrounds", true);
+        p.comment = "Enable/Disable showing a black background behind text.";
+        if(loadSettings)
+        	AnimalInfo.ShowTextBackgrounds = p.getBoolean(true);
+        else
+        	p.set(AnimalInfo.ShowTextBackgrounds);
+        
         p = config.get(CATEGORY_ANIMALINFO, "ShowHorseStatsOnF3Menu", true);
         p.comment = "Enable/Disable showing the stats of the horse you're riding on the F3 screen.";
         if(loadSettings)
@@ -551,6 +586,20 @@ public class ZyinHUD
         	AnimalInfo.SetNumberOfDecimalsDisplayed(p.getInt(1));
         else
         	p.set(AnimalInfo.GetNumberOfDecimalsDisplayed());
+
+        p = config.get(CATEGORY_ANIMALINFO, "ShowBreedingIcons", true);
+        p.comment = "Enable/Disable showing an icon if the animal is ready to breed.";
+        if(loadSettings)
+        	AnimalInfo.ShowBreedingIcons = p.getBoolean(true);
+        else
+        	p.set(AnimalInfo.ShowBreedingIcons);
+
+        p = config.get(CATEGORY_ANIMALINFO, "ShowBreedingTimers", true);
+        p.comment = "Enable/Disable showing a timer counting down to when the animal is ready to breed again.";
+        if(loadSettings)
+        	AnimalInfo.ShowBreedingTimers = p.getBoolean(true);
+        else
+        	p.set(AnimalInfo.ShowBreedingTimers);
 
         p = config.get(CATEGORY_ANIMALINFO, "ShowBreedingTimerForHorses", true);
         p.comment = "Enable/Disable showing a timer that tells you how long until a horse can breed again.";
@@ -626,12 +675,12 @@ public class ZyinHUD
         else
         	p.set(Clock.Enabled);
         
-        p = config.get(CATEGORY_CLOCK, "ClockMode", 0);
+        p = config.get(CATEGORY_CLOCK, "ClockMode", 1);
         p.comment = "Set the clock mode:" + config.NEW_LINE +
         			"0 = standard Minecraft time in game" + config.NEW_LINE +
         			"1 = countdown timer till morning/night.";
         if(loadSettings)
-        	Clock.Mode = p.getInt(0);
+        	Clock.Mode = p.getInt(1);
         else
         	p.set(Clock.Mode);
 
