@@ -282,6 +282,8 @@ public class AnimalInfo extends ZyinHUDModBase
     		
     		if (animalGrowingAge < 0)
         		multilineOverlayArrayList.add(GetHorseBabyGrowingAgeAsPercent(horse) + "%");
+        
+        multilineOverlayArrayList.add(GetHorsePerfectionText(horse));
     	}
     	if(ShowBreedingTimers && animal instanceof EntityAgeable)
         {
@@ -451,6 +453,42 @@ public class AnimalInfo extends ZyinHUDModBase
             horseJumpString = FontCodes.RED + horseJumpString + FontCodes.WHITE;
 
         return horseJumpString;
+    }
+    
+    private static String GetHorsePerfectionText(EntityHorse horse)
+    {
+        /**
+         * From http://www.minecraftwiki.net/wiki/User:Mgr/Sandbox#Horses
+         * HP    15-30
+         * Jump  0.4-1.0
+         * Speed 0.1125-0.3375
+         */
+        double maxHP = 30.0;
+        double minHP = 15.0;
+        double HPRange = maxHP - minHP;
+        double maxJump = 1.0;
+        double minJump = 0.4;
+        double JumpRange = maxJump - minJump;
+        double maxSpeed = 0.3375;
+        double minSpeed = 0.1125;
+        double SpeedRange = maxSpeed - minSpeed;
+
+        double horseSpeed =
+            horse.getEntityAttribute(SharedMonsterAttributes.movementSpeed)
+            .getAttributeValue();
+        double horseHP =
+            horse.getEntityAttribute(SharedMonsterAttributes.maxHealth)
+            .getAttributeValue();
+        double horseJump = horse.getHorseJumpStrength();
+        double perfection = (
+                             (horseHP - minHP) / HPRange +
+                             (horseSpeed - minSpeed) / SpeedRange +
+                             (horseJump - minJump) / JumpRange
+                             ) / 3.0 * 100;
+        return
+            FontCodes.DARK_GREEN +
+            decimalFormat.format(perfection) +
+            "%" + FontCodes.WHITE;
     }
 
     /**
